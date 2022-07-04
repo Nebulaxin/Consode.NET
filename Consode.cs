@@ -1,7 +1,4 @@
-using System.Runtime.Intrinsics;
-using System.Numerics;
 using System.Threading;
-using System.Linq;
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -99,7 +96,7 @@ namespace Consode
             "map.txt",
         };
 
-        private static bool drawMap, showDebug = false, running = true, errorQuit = false, noCap = false;
+        private static bool drawMap, showDebug = false, running = true, errorQuit = false, noCap = false, disableFlash = false;
         private static int targetFramerate = 40;
         private static TimeSpan targetFrameTime = TimeSpan.FromSeconds(1 / 40.0);
         private static Player player;
@@ -121,12 +118,13 @@ namespace Consode
                     {
                         while (csel != 0)
                         {
-                            csel = SelectionMenu(16, 8, SettingsLogo, "BACK", "TARGET FRAMERATE", "SHOW DEBUG INFO");
+                            csel = SelectionMenu(16, 8, SettingsLogo, "BACK", "TARGET FRAMERATE", "SHOW DEBUG INFO", "DISABLE FLASH");
                             if (csel == 0) break;
                             switch (csel)
                             {
                                 case 1: targetFramerate = SettingsMenu(16, 8, SettingsLogo, "TARGET FRAMERATE(NO FRAMERATE CAP IF -1)", -1, 200, targetFramerate); break;
                                 case 2: showDebug = SettingsMenu(16, 8, SettingsLogo, "SHOW DEBUG INFO", 0, 1, showDebug ? 1 : 0) == 1; break;
+                                case 3: disableFlash = SettingsMenu(16, 8, SettingsLogo, "DISABLE FLASH", 0, 1, disableFlash ? 1 : 0) == 1; break;
                             }
                             SaveSettings();
                         }
@@ -138,26 +136,29 @@ namespace Consode
 
                 LoadMap(mapId);
 
-                var r = new Random();
                 Thread.Sleep(640);
-                for (int i = 0; i < 8; i++)
+                if (!disableFlash)
                 {
-                    Console.Clear();
-                    switch (i)
+                    var r = new Random();
+                    for (int i = 0; i < 8; i++)
                     {
-                        case 0: Console.ForegroundColor = ConsoleColor.Blue; break;
-                        case 2: Console.ForegroundColor = ConsoleColor.Red; break;
-                        case 4: Console.ForegroundColor = ConsoleColor.DarkRed; break;
-                        case 6: Console.ForegroundColor = ConsoleColor.DarkBlue; break;
-                        default: Console.ForegroundColor = ConsoleColor.White; break;
+                        Console.Clear();
+                        switch (i)
+                        {
+                            case 0: Console.ForegroundColor = ConsoleColor.Blue; break;
+                            case 2: Console.ForegroundColor = ConsoleColor.Red; break;
+                            case 4: Console.ForegroundColor = ConsoleColor.DarkRed; break;
+                            case 6: Console.ForegroundColor = ConsoleColor.DarkBlue; break;
+                            default: Console.ForegroundColor = ConsoleColor.White; break;
+                        }
+                        int x = (int)(16 + (r.NextDouble() * 2 - 1) * (7 - i)), y = (int)(8 + (r.NextDouble() * 2 - 1) * (7 - i));
+                        foreach (var line in Logo.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            Console.SetCursorPosition(x, y++);
+                            Console.Write(line);
+                        }
+                        Thread.Sleep(100);
                     }
-                    int x = (int)(8 + r.NextDouble() * (7 - i)), y = (int)(8 + r.NextDouble() * (7 - i));
-                    foreach (var line in Logo.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-                    {
-                        Console.SetCursorPosition(x, y++);
-                        Console.Write(line);
-                    }
-                    Thread.Sleep(100);
                 }
                 Thread.Sleep(200);
 
@@ -208,7 +209,7 @@ namespace Consode
                 Console.ResetColor();
 
                 const string sep = "\n================================\n";
-                File.AppendAllText("errorLog.txt", File.Exists("errorlog.txt") ? $"{sep}{e}\n" : $"Consode.NET Error Log\n{sep}{e}\n" );
+                File.AppendAllText("errorLog.txt", File.Exists("errorlog.txt") ? $"{sep}{e}\n" : $"Consode.NET Error Log\n{sep}{e}\n");
             }
             finally
             {
@@ -286,11 +287,12 @@ namespace Consode
         {
             if (File.Exists("settings"))
             {
-                using (var fs = File.OpenText("settings"))
+                using (var sr = File.OpenText("settings"))
                 {
-                    targetFramerate = int.Parse(fs.ReadLine());
+                    if(!sr.EndOfStream) targetFramerate = int.Parse(sr.ReadLine());
                     if (!(noCap = targetFramerate == -1)) targetFrameTime = TimeSpan.FromSeconds(1.0 / targetFramerate);
-                    showDebug = bool.Parse(fs.ReadLine());
+                    if(!sr.EndOfStream) showDebug = bool.Parse(sr.ReadLine());
+                    if(!sr.EndOfStream) disableFlash = bool.Parse(sr.ReadLine());
                 }
             }
             else SaveSettings();
@@ -302,6 +304,7 @@ namespace Consode
             {
                 sw.WriteLine(targetFramerate);
                 sw.WriteLine(showDebug);
+                sw.WriteLine(disableFlash);
             }
         }
 

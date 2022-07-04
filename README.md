@@ -1,2 +1,8 @@
 # Consode.NET
-.Net Standart 2.0 port of Consode by Rogender
+dotnet port of Consode by [Rogender](https://github.com/rogender)
+
+Stuff added:
++ Main Menu
++ Improved map select menu
++ Settings
++ Fancy start animation
